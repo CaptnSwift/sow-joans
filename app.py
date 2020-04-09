@@ -12,6 +12,7 @@ from google.auth.transport.requests import Request
 
 import pandas as pd
 from datetime import datetime as dt
+from datetime import timedelta
 import plotly.graph_objects as go
 
 import dash
@@ -89,9 +90,6 @@ for t,tod,d in zip(data['timestamp'], data['time_of_day'], data['date_replacemen
 
 data['date']=date
 
-# sort on new column date  
-
-
 # strip white space off island names
 islands = [ str.strip(i) for i in data['island']]
 
@@ -99,7 +97,46 @@ data['island'] = islands
 
 # %% 
 # create the rectangles to go behind every other date - maybe every even date to simplify things?
+rect_dicts = []
 
+dates = pd.DataFrame(data['date'].unique())
+dates[0].append(pd.DataFrame([dates[0][dates.shape[0]-1] + timedelta(days=1)]))
+
+# %%
+
+for i in range(len(dates[0])-1):
+    if dates[0].iloc[i].day % 2 == 0:
+        rect_dicts.append({
+            'type':"rect",
+            # x-reference is assigned to the x-values
+            'xref':"x",
+            # y-reference is assigned to the plot paper [0,1]
+            'yref':"paper",
+            'x0':dates[0].iloc[i].date() + timedelta(hours=0, minutes=0),
+            'y0':0,
+            'x1':dates[0].iloc[i+1].date() + timedelta(hours=0, minutes=0),
+            'y1':1,
+            'fillcolor':'rgba(208, 208, 208, 1)',
+            'opacity':0.5,
+            'layer':"below",
+            'line_width':0,
+        })
+    else:
+        rect_dicts.append({
+            'type':"rect",
+            # x-reference is assigned to the x-values
+            'xref':"x",
+            # y-reference is assigned to the plot paper [0,1]
+            'yref':"paper",
+            'x0':dates[0].iloc[i].date() + timedelta(hours=0, minutes=0),
+            'y0':0,
+            'x1':dates[0].iloc[i+1] + timedelta(hours=0, minutes=0),
+            'y1':1,
+            'fillcolor':'rgba(230, 230, 230, 1)',#'rgba(43, 176, 233, 1)',
+            'opacity':0.5,
+            'layer':"below",
+            'line_width':0,
+        })
 
 # %%
 # seperate data into the different island groups
@@ -124,9 +161,12 @@ fig.update_layout(
     yaxis_title='turnip sale price'
 )
 
-# fig.update_layout(shapes=rect_dicts)
+fig.update_layout(
+    shapes=rect_dicts, 
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)'
 
-
+)
 
 # highlight every other day witht he background block thing that I did in the sleep chart (should be even easier tbh)
 
@@ -140,11 +180,6 @@ fig.update_layout(
 app = dash.Dash(__name__)
 
 server = app.server # the Flask app
-
-colors = {
-    'background': '#111111',
-    'text': '#7FDBFF'
-}
 
 app.layout = html.Div(children=[
     dcc.Markdown(children=
