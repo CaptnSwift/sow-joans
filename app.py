@@ -139,6 +139,8 @@ fig.update_layout(
 
 app = dash.Dash(__name__)
 
+server = app.server # the Flask app
+
 colors = {
     'background': '#111111',
     'text': '#7FDBFF'
@@ -162,4 +164,4 @@ app.layout = html.Div(children=[
 ])
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    # app.run_server(debug=False)
