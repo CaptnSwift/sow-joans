@@ -5,6 +5,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 import pandas as pd
+import numpy as np
 from datetime import datetime as dt
 from datetime import timedelta
 import plotly.graph_objects as go
@@ -104,8 +105,11 @@ def generate_rects(data):
     # create the rectangles to go behind every other date - maybe every even date to simplify things?
     rect_dict = []
 
-    dates = pd.DataFrame(data['date'].unique())
-    dates[0].append(pd.DataFrame([dates[0][dates.shape[0]-1] + timedelta(days=1)]))
+    date_only = [ d.date() for d in data['date'] ]
+
+    dates = pd.DataFrame(date_only)[0].unique()
+    dates = np.append(dates, [dates[-1] + timedelta(days=1)])
+    dates = pd.DataFrame(dates)
 
     for i in range(len(dates[0])-1):
         if dates[0].iloc[i].day % 2 == 0:
@@ -115,9 +119,9 @@ def generate_rects(data):
                 'xref':"x",
                 # y-reference is assigned to the plot paper [0,1]
                 'yref':"paper",
-                'x0':dates[0].iloc[i].date() + timedelta(hours=0, minutes=0),
+                'x0':dates[0].iloc[i] + timedelta(hours=0, minutes=0),
                 'y0':0,
-                'x1':dates[0].iloc[i+1].date() + timedelta(hours=0, minutes=0),
+                'x1':dates[0].iloc[i+1] + timedelta(hours=0, minutes=0),
                 'y1':1,
                 'fillcolor':'rgba(208, 208, 208, 1)',
                 'opacity':0.5,
@@ -131,7 +135,7 @@ def generate_rects(data):
                 'xref':"x",
                 # y-reference is assigned to the plot paper [0,1]
                 'yref':"paper",
-                'x0':dates[0].iloc[i].date() + timedelta(hours=0, minutes=0),
+                'x0':dates[0].iloc[i] + timedelta(hours=0, minutes=0),
                 'y0':0,
                 'x1':dates[0].iloc[i+1] + timedelta(hours=0, minutes=0),
                 'y1':1,
