@@ -1,14 +1,18 @@
 import pickle
 import os.path
+
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 import pandas as pd
 import numpy as np
+
 from datetime import datetime as dt
 from datetime import timedelta
+
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import dash
 import dash_core_components as dcc
@@ -56,7 +60,7 @@ def clean_data(values):
     # in the future, can we determine which data is new?
 
     # new col names
-    col_names = ['timestamp','island','price','time_of_day', 'date_replacement']
+    col_names = ['timestamp','island','price','tod', 'date_replacement']
 
     # import values to pandas
     data = pd.DataFrame(values[1:], columns=col_names)
@@ -64,7 +68,7 @@ def clean_data(values):
     # clean dates
     date = []
     # replace timestamp with date, if applicable
-    for t,tod,d in zip(data['timestamp'], data['time_of_day'], data['date_replacement']):
+    for t,tod,d in zip(data['timestamp'], data['tod'], data['date_replacement']):
         if d is not None:
             if tod == 'Morning':
                 date.append(dt.strptime(d + ' ' + '9:00',  '%m/%d/%Y %H:%M'))
@@ -92,7 +96,7 @@ def seperate_islands(data):
     # seperate data into the different island groups
     # create a list of island data
     island_data = []
-    islands = data['island'].unique() 
+    islands = np.sort(data['island'].unique())
     # islands = islands.sort()
     # maybe sort alphabetically?
 
@@ -163,10 +167,86 @@ def all_chart(islands, island_data, rect_dict):
         shapes=rect_dict, 
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)'
-
     )
 
     return fig
 
 def chart_island_minis(islands, island_data):
-    pass
+
+    rows = 2
+    cols = 3
+
+    titles = islands
+
+    fig = make_subplots(
+            rows=rows, 
+            cols=cols,
+            # shared_xaxes=True,
+            # shared_yaxes=True,
+            subplot_titles=titles)
+
+    # for loop. figure out subplots again
+    r=1
+    c=1
+    for i,d in zip(islands, island_data):
+        #add a sub plot
+        add_plot(fig,i,d,r,c)
+        c=c+1
+        if c % 4==0:
+            r=r+1
+            c=1
+
+    
+    fig.update_layout(
+        showlegend=False,
+        # xaxis_rangeslider_visible=False,
+        # height=1000
+        )
+    
+    return fig
+
+def add_plot(fig,island,data,row,col):
+    fig.add_trace(bar_chart(island, data), row=row, col=col)
+
+def bar_chart(island, data):
+    temp_data = data.copy()
+    date_only = [ d.date() for d in temp_data['date'] ]
+    temp_data['date_only'] = date_only 
+    dates = temp_data['date_only'].unique()
+
+    # ensure open and close are the same length
+    for d in dates:
+        temp = temp_data.loc[temp_data['date_only']==d]
+
+        if temp.shape[0] < 2 and temp.shape[0] > 0:
+            if temp['tod'].iloc[0] == 'Morning':
+                temp_data = temp_data.append(dict(date=d, tod='Afternoon',price=temp['price'].iloc[0]), ignore_index=True)
+            elif temp['tod'].iloc[0] == 'Afternoon':
+                temp_data = temp_data.append(dict(date=d, tod='Morning',price=temp['price'].iloc[0]), ignore_index=True)
+    # add missing date / tod / price = None
+
+    temp_data = temp_data.sort_values(by='date')
+
+    open_data = temp_data.loc[temp_data['tod'] == 'Morning', 'price']
+    close_data = temp_data.loc[temp_data['tod'] == 'Afternoon', 'price']
+
+    high_data = [ max(o, c) for o,c in zip(open_data, close_data) ]
+    low_data = [ min(o, c) for o,c in zip(open_data, close_data) ]
+
+    fig = go.Box(
+                x=temp_data['date_only'],
+                y=temp_data['price']
+            )
+
+    # fig = go.Candlestick(
+    #             x=temp_data['date_only'],
+    #             open=open_data,
+    #             high=high_data,
+    #             low=low_data,
+    #             close=close_data
+    #         )
+
+    #titles, island name
+    #axis titles
+
+    return fig

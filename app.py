@@ -20,7 +20,9 @@ def serve_layout():
 
     rect_dict = support.generate_rects(data)
 
-    fig = support.all_chart(islands, island_data, rect_dict)
+    all_chart = support.all_chart(islands, island_data, rect_dict)
+
+    minis = support.chart_island_minis(islands, island_data)
 
     return html.Div(children=[
                 dcc.Markdown(children=
@@ -35,8 +37,15 @@ def serve_layout():
 
                 dcc.Graph(
                     id='all-chart',
-                    figure=fig
+                    figure=all_chart
                 ),
+
+                dcc.Graph(
+                    id='minis',
+                    figure=minis
+                ),
+
+
     ])
 
 # %%
