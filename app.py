@@ -25,7 +25,7 @@ def serve_layout():
 
     minis = support.chart_island_minis(islands, island_data)
 
-    table = support_v2.daily_table(islands, island_data, dates)
+    table = support.daily_table(islands, island_data, dates)
 
     return html.Div(children=[
                 dcc.Markdown(children=
