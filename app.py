@@ -5,7 +5,6 @@ Google API example: https://developers.google.com/sheets/api/quickstart/python
 """
 # %%
 import support
-import support_v2
 
 import dash
 import dash_core_components as dcc
