@@ -67,22 +67,26 @@ def clean_data(values):
 
     # clean dates
     date = []
+    date_only = []
     # replace timestamp with date, if applicable
     for t,tod,d in zip(data['timestamp'], data['tod'], data['date_replacement']):
         if d is not None:
+            date_only.append(dt.strftime(dt.strptime(d, '%m/%d/%Y'), '%m/%d/%Y'))
             if tod == 'Morning':
                 date.append(dt.strptime(d + ' ' + '9:00',  '%m/%d/%Y %H:%M'))
             elif tod == 'Afternoon':
                 date.append(dt.strptime(d + ' ' + '15:00',  '%m/%d/%Y %H:%M'))
         elif d is None:
-            temp = dt.strptime(t, '%m/%d/%Y %H:%M:%S')
+            temp = dt.strftime(dt.strptime(t, '%m/%d/%Y %H:%M:%S'), '%m/%d/%Y')
+            date_only.append(temp)
             if tod == 'Morning':
-                date.append(dt.strptime(str(temp.strftime('%m/%d/%Y')) + ' ' + '9:00', '%m/%d/%Y %H:%M'))
+                date.append(dt.strptime(temp + ' ' + '9:00', '%m/%d/%Y %H:%M'))
             elif tod == 'Afternoon':
-                date.append(dt.strptime(str(temp.strftime('%m/%d/%Y')) + ' ' + '15:00',  '%m/%d/%Y %H:%M'))
+                date.append(dt.strptime(temp + ' ' + '15:00', '%m/%d/%Y %H:%M'))
 
     # new date column for the viz
     data['date']=date
+    data['date_only']=date_only
 
     # strip white space off island names
     islands = [ str.strip(i) for i in data['island']]
@@ -90,7 +94,7 @@ def clean_data(values):
     # reassign cleaned islands
     data['island'] = islands
 
-    return data
+    return data, np.unique(date_only)
 
 def seperate_islands(data):
     # seperate data into the different island groups
@@ -173,7 +177,7 @@ def all_chart(islands, island_data, rect_dict):
 
 def chart_island_minis(islands, island_data):
 
-    rows = 2
+    rows = len(islands) % 3
     cols = 3
 
     titles = islands
@@ -248,5 +252,47 @@ def bar_chart(island, data):
 
     #titles, island name
     #axis titles
+
+    return fig
+
+def daily_table(islands,island_data,dates):
+    island_vals = {}
+    headers = []
+
+    WEEKDAYS = {'0':'Monday', '1':'Tuesday', '2':'Wednesday', '3':'Thursday', '4':'Friday', '5':'Saturday', '6': 'Sunday'}
+
+    for island,i in zip(island_data,islands):        
+        headers.extend([['',''],[i, 'AM'], [i, 'PM']])
+        t=''
+        island_vals[i] = []
+
+        for d in np.unique(island['date_only']):
+            dtemp=dt.strptime(d, '%m/%d/%Y')
+            w=dtemp.weekday()
+            t=str(str(dt.strftime(dtemp, '%m/%d/%Y')) + ", " + WEEKDAYS.get(str(w)))
+
+            data = island.loc[island['date_only']==d]
+            if data.empty:
+                island_vals[i].append([dtemp, t, '', ''])
+            else:
+                island_vals[i].append([dtemp, t, data.loc[data['tod']=='Morning']['price'], data.loc[data['tod']=='Afternoon']['price']])
+        
+        island_vals[i] = pd.DataFrame(island_vals[i])
+        island_vals[i].index = island_vals[i].iloc[:,0]
+        island_vals[i] = island_vals[i].iloc[:,1:]
+
+    values = pd.DataFrame(index=dates)
+    values = pd.concat(list(island_vals.values()), axis=1)
+    values = values.fillna('')
+
+    values = values.to_numpy().T
+        
+
+    fig = go.Figure(data=[go.Table(header=dict(values=headers),
+                 cells=dict(
+                    values=values))
+                    ])
+
+    fig.update_layout(height=900)
 
     return fig
